@@ -43,6 +43,14 @@ async function run() {
             res.send(result);
         });
 
+        // Load Product by User Email
+        app.get('/items', async (req, res) => {
+            const email = req.query.email;
+            const query = { email: email };
+            const result = await orderedCollection.find(query).toArray();
+            res.send(result);
+        });
+
     }
     finally {
 
