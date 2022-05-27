@@ -20,6 +20,7 @@ async function run() {
         await client.connect();
         const productionCollection = client.db("production").collection("product");
         const orderedCollection = client.db("production").collection("ordered");
+        const reviewCollection = client.db("production").collection("reviews");
 
         // Get All Product from Db
         app.get('/product', async (req, res) => {
@@ -58,6 +59,18 @@ async function run() {
             const result = await orderedCollection.deleteOne(query);
             res.send(result);
         });
+
+        // Load User Who Ordered
+        app.get('/users', async (req, res) => {
+            const result = await orderedCollection.find().toArray();
+            res.send(result);
+        });
+
+        // Add Reviews Part Added
+        app.get('/reviews', async (req, res) => {
+            const reviews = await reviewCollection.find().toArray();
+            res.send(reviews);
+        })
 
     }
     finally {
