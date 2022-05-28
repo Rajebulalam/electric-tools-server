@@ -38,6 +38,7 @@ async function run() {
         const productionCollection = client.db("production").collection("product");
         const orderedCollection = client.db("production").collection("ordered");
         const reviewCollection = client.db("production").collection("reviews");
+        const adminCollection = client.db("production").collection("admin");
         const usersCollection = client.db("production").collection("users");
 
         // Get All Product from Db
@@ -79,7 +80,7 @@ async function run() {
         });
 
         // Set Users on Database
-        app.put('/users/:email', async (req, res) => {
+        app.put('/admins/:email', async (req, res) => {
             const email = req.params.email;
             const user = req.body;
             const filter = { email: email };
@@ -87,16 +88,27 @@ async function run() {
             const updatedDoc = {
                 $set: user,
             };
-            const result = await usersCollection.updateOne(filter, updatedDoc, options);
+            const result = await adminCollection.updateOne(filter, updatedDoc, options);
             const token = jwt.sign({ email: email }, process.env.SECRET_TOKEN, {
                 expiresIn: '1h'
             });
             res.send({ result, token });
         });
 
+        // Make Admin
+        app.put('/admins/admin/:email', verifyJWT, async (req, res) => {
+            const email = req.params.email;
+            const filter = { email: email };
+            const updatedDoc = {
+                $set: { role: 'admin' },
+            };
+            const result = await adminCollection.updateOne(filter, updatedDoc);
+            res.send(result);
+        });
+
         // Load User Who Ordered
-        app.get('/users', verifyJWT, async (req, res) => {
-            const result = await usersCollection.find().toArray();
+        app.get('/admins', verifyJWT, async (req, res) => {
+            const result = await adminCollection.find().toArray();
             res.send(result);
         });
 
@@ -112,6 +124,27 @@ async function run() {
             const reviews = await reviewCollection.insertOne(body);
             res.send(reviews);
         });
+
+        // Set & Update User
+        app.put('/users/:email', async (req, res) => {
+            const email = req.params.email;
+            const user = req.body;
+            const filter = { email: email };
+            const options = { upsert: true };
+            const updatedDoc = {
+                $set: user,
+            };
+            const result = await usersCollection.updateOne(filter, updatedDoc, options);
+            res.send(result);
+        });
+
+        // Load User
+        app.get('/users', async (req, res) => {
+            const email = req.query.email;
+            const query = { email: email };
+            const result = await usersCollection.find(query).toArray();
+            res.send(result);
+        })
 
     }
     finally {
