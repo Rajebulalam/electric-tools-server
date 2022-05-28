@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const jwt = require('jsonwebtoken');
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 require('dotenv').config();
 const app = express();
@@ -14,6 +15,22 @@ app.use(express.json());
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.nyvck.mongodb.net/?retryWrites=true&w=majority`;
 const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true, serverApi: ServerApiVersion.v1 });
 
+// Verify Token
+function verifyJWT(req, res, next) {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+        return res.status(401).send({ message: 'Unauthorized Access' });
+    }
+    const token = authHeader.split(' ')[1];
+    jwt.verify(token, process.env.SECRET_TOKEN, function (err, decoded) {
+        if (err) {
+            return res.status(403).send({ message: 'Forbidden Access' });
+        }
+        req.decoded = decoded;
+        next();
+    });
+}
+
 // Main Function
 async function run() {
     try {
@@ -21,6 +38,7 @@ async function run() {
         const productionCollection = client.db("production").collection("product");
         const orderedCollection = client.db("production").collection("ordered");
         const reviewCollection = client.db("production").collection("reviews");
+        const usersCollection = client.db("production").collection("users");
 
         // Get All Product from Db
         app.get('/product', async (req, res) => {
@@ -60,9 +78,25 @@ async function run() {
             res.send(result);
         });
 
+        // Set Users on Database
+        app.put('/users/:email', async (req, res) => {
+            const email = req.params.email;
+            const user = req.body;
+            const filter = { email: email };
+            const options = { upsert: true };
+            const updatedDoc = {
+                $set: user,
+            };
+            const result = await usersCollection.updateOne(filter, updatedDoc, options);
+            const token = jwt.sign({ email: email }, process.env.SECRET_TOKEN, {
+                expiresIn: '1h'
+            });
+            res.send({ result, token });
+        });
+
         // Load User Who Ordered
-        app.get('/users', async (req, res) => {
-            const result = await orderedCollection.find().toArray();
+        app.get('/users', verifyJWT, async (req, res) => {
+            const result = await usersCollection.find().toArray();
             res.send(result);
         });
 
@@ -70,7 +104,14 @@ async function run() {
         app.get('/reviews', async (req, res) => {
             const reviews = await reviewCollection.find().toArray();
             res.send(reviews);
-        })
+        });
+
+        // Update Reviews Collection
+        app.post('/reviews', async (req, res) => {
+            const body = req.body;
+            const reviews = await reviewCollection.insertOne(body);
+            res.send(reviews);
+        });
 
     }
     finally {
