@@ -116,15 +116,22 @@ async function run() {
             res.send({ result, token });
         });
 
-        // Make Admin
+        // Make Admin by an Admin
         app.put('/admins/admin/:email', verifyJWT, async (req, res) => {
             const email = req.params.email;
-            const filter = { email: email };
-            const updatedDoc = {
-                $set: { role: 'admin' },
-            };
-            const result = await adminCollection.updateOne(filter, updatedDoc);
-            res.send(result);
+            const requester = req.decoded.email;
+            const requesterAccount = await adminCollection.findOne({ email: requester });
+            if (requesterAccount.role === 'admin') {
+                const filter = { email: email };
+                const updatedDoc = {
+                    $set: { role: 'admin' },
+                };
+                const result = await adminCollection.updateOne(filter, updatedDoc);
+                res.send(result);
+            }
+            else {
+                res.status(403).send({ message: 'Forbidden Access' })
+            }
         });
 
         // Load User Who Ordered
