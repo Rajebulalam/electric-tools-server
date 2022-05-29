@@ -79,6 +79,20 @@ async function run() {
             res.send(result);
         });
 
+        // All Ordered Load from DB
+        app.get('/orders', async (req, res) => {
+            const result = await orderedCollection.find().toArray();
+            res.send(result);
+        });
+
+        // Delete Product from Order
+        app.delete('/orders/:id', async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: ObjectId(id) };
+            const result = await orderedCollection.deleteOne(query);
+            res.send(result);
+        });
+
         // Set Users on Database
         app.put('/admins/:email', async (req, res) => {
             const email = req.params.email;
