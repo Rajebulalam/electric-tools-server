@@ -174,7 +174,7 @@ async function run() {
             res.send(result);
         });
 
-        // Load User
+        // Load User by User Email
         app.get('/users', async (req, res) => {
             const email = req.query.email;
             const query = { email: email };
