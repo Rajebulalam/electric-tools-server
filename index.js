@@ -59,6 +59,13 @@ async function run() {
         // Set Product On Data Base
         app.post('/product', async (req, res) => {
             const body = req.body;
+            const result = await productionCollection.insertOne(body);
+            res.send(result);
+        });
+
+        // Set Product On Data Base
+        app.post('/product', async (req, res) => {
+            const body = req.body;
             const result = await orderedCollection.insertOne(body);
             res.send(result);
         });
