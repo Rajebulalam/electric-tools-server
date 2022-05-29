@@ -57,7 +57,7 @@ async function run() {
         });
 
         // Set Product On Data Base
-        app.post('/product', async (req, res) => {
+        app.post('/added', async (req, res) => {
             const body = req.body;
             const result = await productionCollection.insertOne(body);
             res.send(result);
@@ -98,6 +98,14 @@ async function run() {
             const query = { _id: ObjectId(id) };
             const result = await orderedCollection.deleteOne(query);
             res.send(result);
+        });
+
+        // Admin & Non-Admin Profile
+        app.get('/admin/:email', async (req, res) => {
+            const email = req.params.email;
+            const user = await adminCollection.findOne({ email: email });
+            const isAdmin = user.role === 'admin';
+            res.send({ admin: isAdmin });
         });
 
         // Set Users on Database
@@ -191,6 +199,3 @@ app.get('/', async (req, res) => {
 app.listen(port, () => {
     console.log('Server Site Running 5000')
 });
-
-// Pass : NWAAlKc8FPfIPXR0
-// User : rajebulalam
