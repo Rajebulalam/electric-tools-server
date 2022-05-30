@@ -3,6 +3,7 @@ const cors = require('cors');
 const jwt = require('jsonwebtoken');
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 require('dotenv').config();
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const app = express();
 const port = process.env.PORT || 5000;
 
@@ -40,6 +41,7 @@ async function run() {
         const reviewCollection = client.db("production").collection("reviews");
         const adminCollection = client.db("production").collection("admin");
         const usersCollection = client.db("production").collection("users");
+        const paymentCollection = client.db("production").collection("payments");
 
         // Get All Product from Db
         app.get('/product', async (req, res) => {
@@ -87,9 +89,33 @@ async function run() {
         });
 
         // All Ordered Load from DB
-        app.get('/orders', async (req, res) => {
+        app.get('/orders', verifyJWT, async (req, res) => {
             const result = await orderedCollection.find().toArray();
             res.send(result);
+        });
+
+        // Order Load by Id
+        app.get('/orders/:id', verifyJWT, async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: ObjectId(id) };
+            const result = await orderedCollection.findOne(query);
+            res.send(result);
+        });
+
+        // Update Order Collection after Payment Transaction
+        app.patch('/orders/:id', verifyJWT, async (req, res) => {
+            const id = req.params.id;
+            const payment = req.body;
+            const filter = { _id: ObjectId(id) };
+            const updatedDoc = {
+                $set: {
+                    paid: true,
+                    transactionId: payment.transactionId,
+                }
+            };
+            const result = await paymentCollection.insertOne(payment);
+            const updatedOrder = await orderedCollection.updateOne(filter, updatedDoc);
+            res.send(updatedDoc);
         });
 
         // Delete Product from Order
@@ -122,6 +148,19 @@ async function run() {
                 expiresIn: '1h'
             });
             res.send({ result, token });
+        });
+
+        // Payment method
+        app.post('/create-payment-intent', verifyJWT, async (req, res) => {
+            const service = req.body;
+            const total = service.total;
+            const amount = total * 100;
+            const paymentIntent = await stripe.paymentIntents.create({
+                amount: amount,
+                currency: 'usd',
+                payment_method_types: ['card']
+            });
+            res.send({ clientSecret: paymentIntent.client_secret });
         });
 
         // Make Admin by an Admin
@@ -180,7 +219,7 @@ async function run() {
             const query = { email: email };
             const result = await usersCollection.find(query).toArray();
             res.send(result);
-        })
+        });
 
     }
     finally {
