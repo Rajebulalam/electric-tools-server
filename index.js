@@ -89,7 +89,7 @@ async function run() {
         });
 
         // All Ordered Load from DB
-        app.get('/orders', async (req, res) => {
+        app.get('/orders', verifyJWT, async (req, res) => {
             const result = await orderedCollection.find().toArray();
             res.send(result);
         });
